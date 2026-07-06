@@ -183,6 +183,15 @@ final class SchemaGenerator
     {
         if (isset($schema['type']) && \is_string($schema['type'])) {
             $schema['type'] = [$schema['type'], 'null'];
+
+            return $schema;
+        }
+
+        // Block-G-Härtung: enumSchema() liefert keinen "type"-Schlüssel (nur "enum") — ohne
+        // diesen Zweig bliebe ein nullable Enum-Parameter (?SomeEnum) nie-null-fähig im Schema,
+        // und OutputValidator würde jeden legitimen null-Wert als "nicht in der enum-Liste" ablehnen.
+        if (isset($schema['enum']) && \is_array($schema['enum'])) {
+            $schema['enum'] = [...$schema['enum'], null];
         }
 
         return $schema;

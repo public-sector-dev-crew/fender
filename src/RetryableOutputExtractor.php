@@ -23,12 +23,20 @@ use Psr\Log\NullLogger;
  * Constraints laufen NUR nach erfolgreicher Schema-Validierung — eine strukturell
  * ungültige Ausgabe wird nie gegen {@see OutputConstraintInterface} geprüft.
  *
+ * **Größen-Obergrenze (Block-G-Härtung):** fender selbst erzwingt keine Backend-seitige
+ * Token-/Längenbegrenzung (das bleibt Sache des LLM-Clients/-Servers) — aber eine
+ * pathologisch große Rohantwort (Backend-Fehlverhalten, Wiederholungsschleife ohne
+ * Stop-Token) wird VOR jedem `json_decode`/Reflection-Aufwand verworfen, statt sie
+ * unbegrenzt zu dekodieren/hydrieren (Defense-in-Depth gegen Speicher-/Zeit-Erschöpfung
+ * eines Worker-Prozesses).
+ *
  * @since 0.1.0
  */
 final class RetryableOutputExtractor
 {
     public function __construct(
         private readonly LoggerInterface $logger = new NullLogger(),
+        private readonly int $maxResponseBytes = 1_048_576,
     ) {
     }
 
@@ -60,6 +68,18 @@ final class RetryableOutputExtractor
 
         for ($attempt = 1; $attempt <= $maxAttempts; ++$attempt) {
             $raw = $complete($prompt);
+
+            if (\strlen($raw) > $this->maxResponseBytes) {
+                $lastSchemaErrors = [\sprintf(
+                    '$: Antwort überschreitet die Größenobergrenze (%d Bytes > %d Bytes) — verworfen, nicht dekodiert.',
+                    \strlen($raw),
+                    $this->maxResponseBytes,
+                )];
+                $lastConstraintViolations = [];
+                $this->logger->info('fender: Antwort überschreitet Größenobergrenze.', ['attempt' => $attempt, 'bytes' => \strlen($raw)]);
+                $prompt = self::withFeedback($initialPrompt, $lastSchemaErrors);
+                continue;
+            }
 
             $validation = OutputValidator::validate($raw, $schema);
             if (!$validation->valid) {
