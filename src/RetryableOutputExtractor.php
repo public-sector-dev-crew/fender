@@ -16,19 +16,14 @@ use Psr\Log\NullLogger;
  * (ARCH-03 §3.11). **LLM-Client-agnostisch:** fender ruft kein Gateway/keinen
  * `steg`-Client selbst auf — der Konsument liefert eine Completion-Funktion
  * (`callable(string): string`), fender kennt nur Prompt-Text rein, Antwort-Text
- * raus. Reines Prompt+Parse+Retry in dieser Version — KEINE LLM-seitige
- * Grammatik-/Schema-Erzwingung (Run-09-Scope-Entscheidung, s. Mission-Brief
- * „Nicht in diesem Lauf": vLLM/llama.cpp Constrained Decoding ist ein Folge-Spike).
+ * raus. Reines Prompt+Parse+Retry — keine LLM-seitige Grammatik-/Schema-Erzwingung.
  *
- * Constraints laufen NUR nach erfolgreicher Schema-Validierung — eine strukturell
+ * Constraints laufen nur nach erfolgreicher Schema-Validierung — eine strukturell
  * ungültige Ausgabe wird nie gegen {@see OutputConstraintInterface} geprüft.
  *
- * **Größen-Obergrenze (Block-G-Härtung):** fender selbst erzwingt keine Backend-seitige
- * Token-/Längenbegrenzung (das bleibt Sache des LLM-Clients/-Servers) — aber eine
- * pathologisch große Rohantwort (Backend-Fehlverhalten, Wiederholungsschleife ohne
- * Stop-Token) wird VOR jedem `json_decode`/Reflection-Aufwand verworfen, statt sie
- * unbegrenzt zu dekodieren/hydrieren (Defense-in-Depth gegen Speicher-/Zeit-Erschöpfung
- * eines Worker-Prozesses).
+ * Eine pathologisch große Rohantwort wird vor jedem `json_decode`/Reflection-
+ * Aufwand verworfen statt unbegrenzt dekodiert (Schutz gegen Speicher-/Zeit-
+ * Erschöpfung bei einem fehlverhaltenden Backend).
  *
  * @since 0.1.0
  */

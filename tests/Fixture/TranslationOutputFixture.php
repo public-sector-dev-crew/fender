@@ -12,8 +12,7 @@ use Lotse\Fender\Attribute\Description;
 use Lotse\Fender\Attribute\NumberRange;
 
 /**
- * Testfixtur, angelehnt an das ARCH-03 §3.11-Beispiel (bewusst derselbe Zuschnitt
- * wie der spätere reale Klartext-Anwendungsfall, s. Mission-Brief Block A).
+ * Testfixtur, angelehnt an das ARCH-03 §3.11-Beispiel.
  */
 final readonly class TranslationOutputFixture
 {

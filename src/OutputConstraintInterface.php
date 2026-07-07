@@ -9,15 +9,12 @@ namespace Lotse\Fender;
 
 /**
  * Prüft eine bereits schema-valide, geparste Ausgabe gegen eine Zusatzregel
- * JENSEITS der reinen Struktur-Konformität — der generische Erweiterungspunkt für
- * Konsumenten, deren Struktur zusätzlich einer Policy genügen muss (z. B. „darf
- * keine unzulässigen Inhalte tragen"). Schema-Konformität allein garantiert das
- * nicht (Herstellerdokumentation OpenAI/Google, verifiziert in Run-09-Recherche).
+ * jenseits der reinen Struktur-Konformität (z. B. Policy-Konformität des Inhalts).
+ * Schema-Konformität allein garantiert das nicht.
  *
- * Läuft in {@see RetryableOutputExtractor} NACH erfolgreicher Schema-Validierung,
- * nie davor — eine strukturell ungültige Ausgabe wird nie gegen Constraints
- * geprüft. Die konkrete Regel (was "unzulässig" bedeutet) ist reine
- * Konsumenten-Konfiguration; fender kennt sie nicht.
+ * Läuft in {@see RetryableOutputExtractor} nur nach erfolgreicher Schema-
+ * Validierung. Die konkrete Regel ist Konsumenten-Konfiguration; fender kennt
+ * sie nicht.
  *
  * @since 0.1.0
  */
