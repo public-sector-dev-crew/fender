@@ -123,4 +123,33 @@ final class OutputValidatorTest extends TestCase
             self::assertStringNotContainsString('GEHEIME-PII-MARKIERUNG-DIE-NIE-IM-FEHLER-LANDEN-DARF', $error);
         }
     }
+
+    public function testValidateWeistJsonObjektMitNumerischenSchluesselnAlsListeAb(): void
+    {
+        // {"0":…} an der Stelle eines "array"-Schemafelds ist ein Objekt, keine Liste.
+        $objektStattListe = '{"translation":"x","terminology":{"0":{"term":"a","explanation":"b"}},"confidence":0.5}';
+
+        $result = OutputValidator::validate($objektStattListe, $this->schema());
+
+        self::assertFalse($result->valid);
+        self::assertNotSame([], $result->errors);
+    }
+
+    public function testValidateAkzeptiertDieEchteListenformDesGleichenInhalts(): void
+    {
+        $echteListe = '{"translation":"x","terminology":[{"term":"a","explanation":"b"}],"confidence":0.5}';
+
+        $result = OutputValidator::validate($echteListe, $this->schema());
+
+        self::assertTrue($result->valid);
+        self::assertSame([], $result->errors);
+    }
+
+    public function testValidateWeistJsonArrayWoObjektErwartetAb(): void
+    {
+        $result = OutputValidator::validate('[]', $this->schema());
+
+        self::assertFalse($result->valid);
+        self::assertNotSame([], $result->errors);
+    }
 }

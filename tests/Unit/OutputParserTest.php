@@ -86,4 +86,33 @@ final class OutputParserTest extends TestCase
 
         OutputParser::parse('{kaputt', TranslationOutputFixture::class);
     }
+
+    public function testParseWeistJsonObjektMitNumerischenSchluesselnAlsListeAb(): void
+    {
+        // Ein JSON-Objekt mit rein numerischen Schlüsseln darf kein Listenfeld hydrieren —
+        // sonst schleust ein Absender {"0":…} an der Stelle einer Liste ein Objekt ein.
+        $objektStattListe = '{"translation":"x","terminology":{"0":{"term":"a","explanation":"b"}},"confidence":0.5}';
+
+        $this->expectException(ParseException::class);
+
+        OutputParser::parse($objektStattListe, TranslationOutputFixture::class);
+    }
+
+    public function testParseAkzeptiertDieEchteListenformDesGleichenInhalts(): void
+    {
+        // Gegenprobe: dieselben Daten als echte JSON-Liste hydrieren korrekt.
+        $echteListe = '{"translation":"x","terminology":[{"term":"a","explanation":"b"}],"confidence":0.5}';
+
+        $result = OutputParser::parse($echteListe, TranslationOutputFixture::class);
+
+        self::assertCount(1, $result->terminology);
+        self::assertSame('a', $result->terminology[0]->term);
+    }
+
+    public function testParseWeistJsonArrayAlsWurzelAb(): void
+    {
+        $this->expectException(ParseException::class);
+
+        OutputParser::parse('[{"translation":"x"}]', TranslationOutputFixture::class);
+    }
 }

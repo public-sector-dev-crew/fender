@@ -18,6 +18,12 @@ namespace Lotse\Fender;
  * (kein `additionalProperties: false`) — LLM-Ausgaben tragen gelegentlich
  * Kommentarfelder, die die Struktur nicht kompromittieren.
  *
+ * Dekodiert bewusst nicht-assoziativ: sonst kollabiert `json_decode` ein JSON-Objekt
+ * mit rein numerischen Schlüsseln (`{"0":…}`) und eine JSON-Liste (`[…]`) auf dieselbe
+ * PHP-Array-Form, und die Struktur-Unterscheidung „Liste vs. Objekt" wäre nach dem
+ * Dekodieren nicht mehr rekonstruierbar. Objekte kommen daher als `stdClass`, Listen
+ * als Array.
+ *
  * @since 0.1.0
  */
 final class OutputValidator
@@ -28,7 +34,7 @@ final class OutputValidator
     public static function validate(string $json, array $schema): SchemaValidationResult
     {
         try {
-            $decoded = json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
+            $decoded = json_decode($json, associative: false, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException) {
             return new SchemaValidationResult(valid: false, errors: ['$: ungültiges JSON.']);
         }
@@ -159,25 +165,26 @@ final class OutputValidator
      */
     private static function validateObject(mixed $value, array $schema, string $path): array
     {
-        if (!\is_array($value)) {
+        if (!$value instanceof \stdClass) {
             return [\sprintf('%s: Typ "object" erwartet.', $path)];
         }
 
+        $data = get_object_vars($value);
         $properties = $schema['properties'] ?? [];
         $required = $schema['required'] ?? [];
         $errors = [];
 
         if (\is_array($required)) {
             foreach ($required as $name) {
-                if (\is_string($name) && !\array_key_exists($name, $value)) {
+                if (\is_string($name) && !\array_key_exists($name, $data)) {
                     $errors[] = \sprintf('%s.%s: Pflichtfeld fehlt.', $path, $name);
                 }
             }
         }
 
         if (\is_array($properties)) {
-            foreach ($value as $key => $propertyValue) {
-                if (!\is_string($key) || !isset($properties[$key]) || !\is_array($properties[$key])) {
+            foreach ($data as $key => $propertyValue) {
+                if (!isset($properties[$key]) || !\is_array($properties[$key])) {
                     continue;
                 }
 

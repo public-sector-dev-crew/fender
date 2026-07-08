@@ -17,6 +17,10 @@ use Lotse\Fender\Exception\ParseException;
  * {@see OutputValidator} geprüft wurde (Defense-in-Depth-Fehler werfen
  * {@see ParseException} statt still zu tolerieren).
  *
+ * Dekodiert nicht-assoziativ (Objekte als `stdClass`, Listen als Array), damit ein
+ * JSON-Objekt mit rein numerischen Schlüsseln (`{"0":…}`) nicht als Liste durchgeht —
+ * `json_decode` würde beide sonst auf dieselbe PHP-Array-Form kollabieren.
+ *
  * @since 0.1.0
  */
 final class OutputParser
@@ -31,16 +35,16 @@ final class OutputParser
     public static function parse(string $json, string $class): object
     {
         try {
-            $decoded = json_decode($json, associative: true, flags: \JSON_THROW_ON_ERROR);
+            $decoded = json_decode($json, associative: false, flags: \JSON_THROW_ON_ERROR);
         } catch (\JsonException $exception) {
             throw new ParseException('fender: ungültiges JSON — '.$exception->getMessage());
         }
 
-        if (!\is_array($decoded)) {
+        if (!$decoded instanceof \stdClass) {
             throw new ParseException('fender: JSON-Wurzelwert ist kein Objekt.');
         }
 
-        return self::hydrate($decoded, $class);
+        return self::hydrate(get_object_vars($decoded), $class);
     }
 
     /**
@@ -104,8 +108,8 @@ final class OutputParser
             'string' === $name, 'int' === $name, 'float' === $name, 'bool' === $name => self::hydrateScalar($value, $name, $parameter),
             'array' === $name => self::hydrateArray($value, $parameter),
             is_a($name, \UnitEnum::class, true) => self::hydrateEnumValue($value, $name, $parameter),
-            class_exists($name) => \is_array($value)
-                ? self::hydrate($value, $name)
+            class_exists($name) => $value instanceof \stdClass
+                ? self::hydrate(get_object_vars($value), $name)
                 : throw new ParseException(\sprintf('fender: Parameter "$%s" erwartet ein Objekt.', $parameter->getName())),
             default => throw new ParseException(\sprintf('fender: Typ "%s" (Parameter "$%s") wird nicht unterstützt.', $name, $parameter->getName())),
         };
@@ -148,7 +152,7 @@ final class OutputParser
             static fn (mixed $item): mixed => match (true) {
                 \in_array($itemType, ['string', 'int', 'float', 'bool'], true) => self::hydrateScalar($item, $itemType, $parameter),
                 is_a($itemType, \UnitEnum::class, true) => self::hydrateEnumValue($item, $itemType, $parameter),
-                class_exists($itemType) && \is_array($item) => self::hydrate($item, $itemType),
+                class_exists($itemType) && $item instanceof \stdClass => self::hydrate(get_object_vars($item), $itemType),
                 default => throw new ParseException(\sprintf('fender: #[ArrayOf]-Element-Typ "%s" (Parameter "$%s") passt nicht auf den Wert.', $itemType, $parameter->getName())),
             },
             $value,
